@@ -1,172 +1,180 @@
-export interface Browser<Name = BrowserName> {
-  name: Name
-  appId: string
-  hotKey?: string
-  fav?: boolean
+import braveBeta from '@browser-logos/brave-beta/brave-beta.svg'
+import braveDev from '@browser-logos/brave-dev/brave-dev.svg'
+import brave from '@browser-logos/brave/brave.svg'
+import chromeCanary from '@browser-logos/chrome-canary/chrome-canary.svg'
+import chrome from '@browser-logos/chrome/chrome.svg'
+import chromium from '@browser-logos/chromium/chromium_256x256.png'
+import edgeBeta from '@browser-logos/edge-beta/edge-beta.svg'
+import edgeCanary from '@browser-logos/edge-canary/edge-canary.svg'
+import edgeDev from '@browser-logos/edge-dev/edge-dev.svg'
+import edge from '@browser-logos/edge/edge.svg'
+import firefoxDevEdition from '@browser-logos/firefox-developer-edition/firefox-developer-edition.svg'
+import firefoxNightly from '@browser-logos/firefox-nightly/firefox-nightly.svg'
+import firefox from '@browser-logos/firefox/firefox.svg'
+import iridium from '@browser-logos/iridium/iridium.svg'
+import maxthon from '@browser-logos/maxthon/maxthon_256x256.png'
+import operaBeta from '@browser-logos/opera-beta/opera-beta_256x256.png'
+import operaDeveloper from '@browser-logos/opera-developer/opera-developer_256x256.png'
+import operaGX from '@browser-logos/opera-gx/opera-gx_256x256.png'
+import opera from '@browser-logos/opera/opera.svg'
+import qutebrowser from '@browser-logos/qutebrowser/qutebrowser.svg'
+import safariTechnologyPreview from '@browser-logos/safari-technology-preview/safari-technology-preview_256x256.png'
+import safari from '@browser-logos/safari/safari_256x256.png'
+import tor from '@browser-logos/tor/tor_256x256.png'
+import vivaldi from '@browser-logos/vivaldi/vivaldi.svg'
+import yandex from '@browser-logos/yandex/yandex_256x256.png'
+
+import min from './min_256x256.png'
+import pocket from './pocket.png'
+import polypane from './polypane_256x256.png'
+
+export interface Browser {
+  name: string
+  id: string
+  logo: string
+  urlTemplate?: string
 }
 
-export const browserNames = [
-  'Brave',
-  'Brave Beta',
-  'Brave Dev',
-  'Chromium',
-  'Cliqz',
-  'Firefox',
-  'Firefox Developer Edition',
-  'Firefox Nightly',
-  'Google Chrome',
-  'Google Chrome Canary',
-  'Iridium',
-  'Maxthon',
-  'Microsoft Edge',
-  'Microsoft Edge Beta',
-  'Microsoft Edge Canary',
-  'Microsoft Edge Dev',
-  'Min',
-  'Opera',
-  'Opera Beta',
-  'Opera Developer',
-  'Opera GX',
-  'Polypane',
-  'qutebrowser',
-  'Safari',
-  'Safari Technology Preview',
-  'Tor Browser',
-  'Vivaldi',
-  'Yandex',
-] as const
-
-export type BrowserName = typeof browserNames[number]
-
-export type Browsers = { [key in BrowserName]: Browser<key> }
-
-export const browsers: Browsers = {
-  Brave: {
+export const browsers: Browser[] = [
+  {
     name: 'Brave',
-    appId: 'com.brave.Browser',
-    hotKey: 'b',
+    id: 'com.brave.Browser',
+    logo: brave,
   },
-  'Brave Beta': {
+  {
     name: 'Brave Beta',
-    appId: 'com.brave.Browser.beta',
+    id: 'com.brave.Browser.beta',
+    logo: braveBeta,
   },
-  'Brave Dev': {
+  {
     name: 'Brave Dev',
-    appId: 'com.brave.Browser.dev',
+    id: 'com.brave.Browser.dev',
+    logo: braveDev,
   },
-  Chromium: {
+  {
     name: 'Chromium',
-    appId: 'org.chromium.Chromium',
-    hotKey: 'c',
+    id: 'org.chromium.Chromium',
+    logo: chromium,
   },
-  Cliqz: {
-    name: 'Cliqz',
-    appId: 'org.mozilla.cliqz',
-    hotKey: 'z',
-  },
-  Firefox: {
+  {
     name: 'Firefox',
-    appId: 'org.mozilla.firefox',
-    hotKey: 'f',
+    id: 'org.mozilla.firefox',
+    logo: firefox,
   },
-  'Firefox Developer Edition': {
+  {
     name: 'Firefox Developer Edition',
-    appId: 'org.mozilla.firefoxdeveloperedition',
+    id: 'org.mozilla.firefoxdeveloperedition',
+    logo: firefoxDevEdition,
   },
-  'Firefox Nightly': {
+  {
     name: 'Firefox Nightly',
-    appId: 'org.mozilla.nightly',
+    id: 'org.mozilla.nightly',
+    logo: firefoxNightly,
   },
-  'Google Chrome': {
+  {
     name: 'Google Chrome',
-    appId: 'com.google.Chrome',
-    hotKey: 'g',
+    id: 'com.google.Chrome',
+    logo: chrome,
   },
-  'Google Chrome Canary': {
+  {
     name: 'Google Chrome Canary',
-    appId: 'com.google.Chrome.canary',
+    id: 'com.google.Chrome.canary',
+    logo: chromeCanary,
   },
-  Iridium: {
+  {
     name: 'Iridium',
-    appId: 'de.iridiumbrowser',
-    hotKey: 'i',
+    id: 'de.iridiumbrowser',
+    logo: iridium,
   },
-  Maxthon: {
+  {
     name: 'Maxthon',
-    appId: 'com.maxthon.mac.Maxthon',
-    hotKey: 'm',
+    id: 'com.maxthon.mac.Maxthon',
+    logo: maxthon,
   },
-  'Microsoft Edge': {
+  {
     name: 'Microsoft Edge',
-    appId: 'com.microsoft.edgemac',
-    hotKey: 'e',
+    id: 'com.microsoft.edgemac',
+    logo: edge,
   },
-  'Microsoft Edge Beta': {
+  {
     name: 'Microsoft Edge Beta',
-    appId: 'com.microsoft.edgemac.Beta',
+    id: 'com.microsoft.edgemac.Beta',
+    logo: edgeBeta,
   },
-  'Microsoft Edge Canary': {
+  {
     name: 'Microsoft Edge Canary',
-    appId: 'com.microsoft.edgemac.Canary',
+    id: 'com.microsoft.edgemac.Canary',
+    logo: edgeCanary,
   },
-  'Microsoft Edge Dev': {
+  {
     name: 'Microsoft Edge Dev',
-    appId: 'com.microsoft.edgemac.Dev',
+    id: 'com.microsoft.edgemac.Dev',
+    logo: edgeDev,
   },
-  Min: {
+  {
     name: 'Min',
-    appId: 'com.electron.min',
-    hotKey: '-',
+    id: 'com.electron.min',
+    logo: min,
   },
-  Opera: {
+  {
     name: 'Opera',
-    appId: 'com.operasoftware.Opera',
-    hotKey: 'o',
+    id: 'com.operasoftware.Opera',
+    logo: opera,
   },
-  'Opera Beta': {
+  {
     name: 'Opera Beta',
-    appId: 'com.operasoftware.OperaNext',
+    id: 'com.operasoftware.OperaNext',
+    logo: operaBeta,
   },
-  'Opera Developer': {
+  {
     name: 'Opera Developer',
-    appId: 'com.operasoftware.OperaDeveloper',
+    id: 'com.operasoftware.OperaDeveloper',
+    logo: operaDeveloper,
   },
-  'Opera GX': {
+  {
+    name: 'Pocket',
+    id: 'com.readitlater.PocketMac',
+    logo: pocket,
+    urlTemplate: 'pocket://add?url={{URL}}',
+  },
+  {
     name: 'Opera GX',
-    appId: 'com.operasoftware.OperaGX',
+    id: 'com.operasoftware.OperaGX',
+    logo: operaGX,
   },
-  Polypane: {
+  {
     name: 'Polypane',
-    appId: 'com.firstversionist.polypane',
-    hotKey: 'p',
+    id: 'com.firstversionist.polypane',
+    logo: polypane,
   },
-  qutebrowser: {
+  {
     name: 'qutebrowser',
-    appId: 'org.qt-project.Qt.QtWebEngineCore',
-    hotKey: 'q',
+    id: 'org.qt-project.Qt.QtWebEngineCore',
+    logo: qutebrowser,
   },
-  Safari: {
+  {
     name: 'Safari',
-    appId: 'com.apple.Safari',
-    hotKey: 's',
+    id: 'com.apple.Safari',
+    logo: safari,
   },
-  'Safari Technology Preview': {
+  {
     name: 'Safari Technology Preview',
-    appId: 'com.apple.SafariTechnologyPreview',
+    id: 'com.apple.SafariTechnologyPreview',
+    logo: safariTechnologyPreview,
   },
-  'Tor Browser': {
+  {
     name: 'Tor Browser',
-    appId: 'org.torproject.torbrowser',
-    hotKey: 't',
+    id: 'org.torproject.torbrowser',
+    logo: tor,
   },
-  Vivaldi: {
+  {
     name: 'Vivaldi',
-    appId: 'com.vivaldi.Vivaldi',
-    hotKey: 'v',
+    id: 'com.vivaldi.Vivaldi',
+    logo: vivaldi,
   },
-  Yandex: {
+  {
     name: 'Yandex',
-    appId: 'ru.yandex.desktop.yandex-browser',
-    hotKey: 'y',
+    id: 'ru.yandex.desktop.yandex-browser',
+    logo: yandex,
   },
-}
+]

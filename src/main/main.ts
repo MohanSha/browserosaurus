@@ -1,285 +1,67 @@
-import {
-  app,
-  autoUpdater,
-  BrowserWindow,
-  ipcMain,
-  Menu,
-  MenuItemConstructorOptions,
-  screen,
-  Tray,
-} from 'electron'
-import isDev from 'electron-is-dev'
-import Store from 'electron-store'
+import { app, BrowserWindow, ipcMain, Tray } from 'electron'
 import execa from 'execa'
-import fs from 'fs'
-import os from 'os'
+import path from 'path'
 
-import pkg from '../../package.json'
-import { BrowserName, browsers } from '../config/browsers'
+import { Browser, browsers } from '../config/browsers'
 import {
-  BROWSER_RUN,
-  BROWSERS_SET,
-  CLOSE_WINDOW,
+  BROWSER_SELECTED,
   COPY_TO_CLIPBOARD,
-  FAV_SET,
-  LOG,
-  MOUSE_THROUGH_DISABLE,
-  MOUSE_THROUGH_ENABLE,
-  OPT_TOGGLE,
-  URL_RECEIVED,
-  WINDOW_BLUR,
-} from '../config/events'
+  ESCAPE_PRESSED,
+  FAVOURITE_SELECTED,
+  HOTKEYS_UPDATED,
+  LOGGER,
+  QUIT,
+  RELOAD,
+  RENDERER_LOADED,
+  SET_AS_DEFAULT_BROWSER,
+} from '../renderer/events'
 import copyToClipboard from '../utils/copyToClipboard'
 import getInstalledBrowsers from '../utils/getInstalledBrowsers'
+import { checkForUpdate } from '../utils/isUpdateAvailable'
+import { logger } from '../utils/logger'
+import createWindow from './createWindow'
+import {
+  APP_VERSION,
+  BROWSERS_SCANNED,
+  FAVOURITE_CHANGED,
+  HOTKEYS_RETRIEVED,
+  PROTOCOL_STATUS,
+  UPDATE_STATUS,
+  URL_UPDATED,
+} from './events'
+import { Hotkeys, store } from './store'
 
-// TODO This will be the default in Electron 9, remove once upgraded
+// TODO [electron@>=9] This will be the default in Electron 9, remove once upgraded
 app.allowRendererProcessReuse = true
 
-// Config file
-const dotBrowserosaurus: { ignored: string[] } = { ignored: [] }
-try {
-  const homedir = os.homedir()
-  const file = fs.readFileSync(`${homedir}/.browserosaurus.json`, 'utf8')
-  dotBrowserosaurus.ignored = JSON.parse(file).ignored
-} catch (error) {
-  if (error.code !== 'ENOENT') {
-    throw error
-  }
-}
+// Attempt to fix this bug: https://github.com/electron/electron/issues/20944
+app.commandLine.appendArgument('--enable-features=Metal')
 
-// Start store and set browsers if first run
-const store = new Store()
-
-let urlToOpen: string | null = null
-let appReady: boolean
-let isOptHeld = false
-
-// Prevents garbage collection:
-let tray: Tray
-let pickerWindow: BrowserWindow
-
-const createPickerWindow = () =>
-  new Promise((resolve, reject) => {
-    pickerWindow = new BrowserWindow({
-      acceptFirstMouse: true,
-      alwaysOnTop: true,
-      closable: false,
-      enableLargerThanScreen: true,
-      frame: false,
-      fullscreenable: false,
-      hasShadow: false,
-      height: 50,
-      icon: `${__dirname}/static/icon/icon.png`,
-      maximizable: false,
-      minimizable: false,
-      movable: false,
-      resizable: false,
-      show: false,
-      title: 'Browserosaurus',
-      titleBarStyle: 'customButtonsOnHover',
-      transparent: true,
-      webPreferences: {
-        nodeIntegration: true,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-        // @ts-ignore
-        // eslint-disable-next-line no-undef
-        preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
-      },
-      width: 400,
-    })
-
-    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-    // @ts-ignore
-    // eslint-disable-next-line no-undef
-    pickerWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
-
-    pickerWindow.on('close', (evt) => {
-      evt.preventDefault()
-      pickerWindow.webContents.send(WINDOW_BLUR)
-    })
-
-    pickerWindow.on('blur', () => {
-      pickerWindow.webContents.send(WINDOW_BLUR)
-    })
-
-    pickerWindow.once('ready-to-show', () => {
-      // pickerWindow.webContents.openDevTools()
-      resolve()
-    })
-
-    pickerWindow.once('unresponsive', reject)
-  })
-
-const urlRecevied = (url: string) => {
-  const {
-    workArea: { x, y, width, height },
-  } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-  pickerWindow.setPosition(x, y, false)
-  pickerWindow.setSize(width, height, false)
-  pickerWindow.webContents.send(URL_RECEIVED, url)
-  pickerWindow.show()
-}
-
-ipcMain.on(BROWSER_RUN, (_: Event, name: BrowserName) => {
-  const browser = browsers[name]
-  if (urlToOpen) {
-    if (isOptHeld) {
-      execa('open', [urlToOpen, '-b', browser.appId, '-g'])
-    } else {
-      execa('open', [urlToOpen, '-b', browser.appId])
-    }
-  }
-
-  pickerWindow.webContents.send(WINDOW_BLUR)
-})
-
-ipcMain.on(COPY_TO_CLIPBOARD, () => {
-  if (urlToOpen) {
-    copyToClipboard(urlToOpen)
-  }
-
-  pickerWindow.webContents.send(WINDOW_BLUR)
-})
-
-ipcMain.on(CLOSE_WINDOW, () => {
-  isOptHeld = false
-  urlToOpen = null
-  pickerWindow.hide()
-  app.hide()
-  app.dock.hide()
-})
-
-ipcMain.on(OPT_TOGGLE, (_: Event, toggle: boolean) => {
-  isOptHeld = toggle
-})
-
-/**
- * LOG
- *
- * Utility listener used for debugging.
- * Allows sending a string to the main process.
- */
-ipcMain.on(
-  LOG,
-  (
-    _: Event,
-    {
-      errorName,
-      errorMessage,
-      errorInfo,
-    }: { errorName: string; errorMessage: string; errorInfo: object },
-  ) => {
-    // eslint-disable-next-line no-console
-    console.log(errorName, errorMessage, errorInfo)
-  },
-)
-
-ipcMain.on(MOUSE_THROUGH_ENABLE, () => {
-  pickerWindow.setIgnoreMouseEvents(true, { forward: true })
-})
-
-ipcMain.on(MOUSE_THROUGH_DISABLE, () => {
-  pickerWindow.setIgnoreMouseEvents(false)
-})
-
-app.on('ready', async () => {
+if (store.get('firstRun')) {
   // Prompt to set as default browser
   app.setAsDefaultProtocolClient('http')
+}
 
-  const fav = store.get('fav') || 'Safari'
+// Hide from dock and cmd-tab
+app.dock.hide()
 
-  const browserNames = (await getInstalledBrowsers()).filter(
-    (name) => !dotBrowserosaurus.ignored.includes(name),
+// Prevents garbage collection
+let bWindow: BrowserWindow | undefined
+let tray: Tray | undefined
+
+app.on('ready', async () => {
+  bWindow = await createWindow()
+
+  tray = new Tray(path.join(__dirname, '/static/icon/tray_iconTemplate.png'))
+  tray.setPressedImage(
+    path.join(__dirname, '/static/icon/tray_iconHighlight.png'),
   )
-
-  tray = new Tray(`${__dirname}/static/icon/tray_iconTemplate.png`)
-  tray.setPressedImage(`${__dirname}/static/icon/tray_iconHighlight.png`)
   tray.setToolTip('Browserosaurus')
-  const contextMenu: MenuItemConstructorOptions[] = [
-    {
-      label: 'Favourite',
-      submenu: Menu.buildFromTemplate([
-        ...(browserNames.map((browserName) => ({
-          checked: browserName === fav,
-          label: browserName,
-          type: 'radio',
-          click: () => {
-            store.set('fav', browserName)
-            pickerWindow.webContents.send(FAV_SET, browserName)
-          },
-        })) as MenuItemConstructorOptions[]),
-      ]),
-    },
-    {
-      type: 'separator',
-    },
-    {
-      label: 'Quit',
-      click: () => app.exit(),
-    },
-    {
-      type: 'separator',
-    },
-    {
-      label: `v${app.getVersion()}`,
-      enabled: false,
-    },
-  ]
-  tray.setContextMenu(Menu.buildFromTemplate(contextMenu))
+  tray.addListener('click', () => {
+    bWindow?.show()
+  })
 
-  await createPickerWindow()
-
-  // Send browsers and fav down to picker
-  pickerWindow.webContents.send(BROWSERS_SET, browserNames)
-  pickerWindow.webContents.send(FAV_SET, fav)
-
-  if (urlToOpen) {
-    // if Browserosaurus was opened with a link, this will now be sent on to the picker window.
-    urlRecevied(urlToOpen)
-  }
-
-  // Auto update on production
-  if (!isDev) {
-    const feedURL = `https://update.electronjs.org/will-stone/browserosaurus/darwin-x64/${app.getVersion()}`
-
-    autoUpdater.setFeedURL({
-      url: feedURL,
-      headers: {
-        'User-Agent': `${pkg.name}/${pkg.version} (darwin: x64)`,
-      },
-    })
-
-    autoUpdater.on('update-downloaded', () => {
-      tray.setImage(`${__dirname}/static/icon/tray_iconBlue.png`)
-
-      contextMenu[2] = {
-        label: 'Install Update',
-        click: () => autoUpdater.quitAndInstall(),
-      }
-
-      // reapply tray menu
-      tray.setContextMenu(Menu.buildFromTemplate(contextMenu))
-    })
-
-    autoUpdater.on('before-quit-for-update', () => {
-      // All windows must be closed before an update can be applied using "restart".
-      pickerWindow.destroy()
-    })
-
-    autoUpdater.on('error', (err) => {
-      // eslint-disable-next-line no-console
-      console.log('updater error', err)
-    })
-
-    // check for updates right away and keep checking later
-    const TEN_MINS = 600000
-    autoUpdater.checkForUpdates()
-    setInterval(() => {
-      autoUpdater.checkForUpdates()
-    }, TEN_MINS)
-  }
-
-  appReady = true
+  store.set('firstRun', false)
 })
 
 // App doesn't always close on ctrl-c in console, this fixes that
@@ -287,10 +69,140 @@ app.on('before-quit', () => {
   app.exit()
 })
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function sendUrl(url: string) {
+  if (bWindow) {
+    bWindow.webContents.send(URL_UPDATED, url)
+    bWindow.show()
+  } else {
+    await wait(500)
+    sendUrl(url)
+  }
+}
+
+// 1000 * 60 * 60 * 24
+const ONE_DAY_MS = 86400000
+
+async function updateChecker() {
+  const lastUpdateCheck = store.get('lastUpdateCheck')
+  const now = Date.now()
+
+  if (!lastUpdateCheck || lastUpdateCheck + ONE_DAY_MS < now) {
+    logger('Main', 'Checking for update')
+    const isUpdateAvailable = await checkForUpdate(app.getVersion())
+    bWindow?.webContents.send(UPDATE_STATUS, isUpdateAvailable)
+    store.set('lastUpdateCheck', now)
+  }
+}
+
 app.on('open-url', (event, url) => {
   event.preventDefault()
-  urlToOpen = url
-  if (appReady) {
-    urlRecevied(urlToOpen)
+  sendUrl(url)
+  updateChecker()
+})
+
+/**
+ * ------------------
+ * Renderer Listeners
+ * ------------------
+ */
+
+ipcMain.on(RENDERER_LOADED, async () => {
+  const installedBrowsers = await getInstalledBrowsers()
+
+  // Position window
+  const numberOfExtraBrowserRows = Math.ceil(installedBrowsers.length / 5) - 1
+  bWindow?.setSize(800, 249 + numberOfExtraBrowserRows * 112)
+  bWindow?.center()
+
+  // Send all info down to renderer
+  bWindow?.webContents.send(HOTKEYS_RETRIEVED, store.get('hotkeys'))
+  bWindow?.webContents.send(FAVOURITE_CHANGED, store.get('fav'))
+  bWindow?.webContents.send(BROWSERS_SCANNED, installedBrowsers)
+  bWindow?.webContents.send(APP_VERSION, app.getVersion())
+
+  // Is default browser?
+  bWindow?.webContents.send(
+    PROTOCOL_STATUS,
+    app.isDefaultProtocolClient('http'),
+  )
+
+  updateChecker()
+})
+
+interface BrowserSelectedEventArgs {
+  url?: string
+  browserId: Browser['id']
+  isAlt: boolean
+}
+
+ipcMain.on(
+  BROWSER_SELECTED,
+  (_: Event, { url, browserId, isAlt }: BrowserSelectedEventArgs) => {
+    // Bail if browser id is missing
+    if (!browserId) return
+
+    const browser = browsers.find((b) => b.id === browserId)
+
+    // Bail if browser cannot be found in config (this, in theory, can't happen)
+    if (!browser) return
+
+    const urlString = url || ''
+    const processedUrlTemplate = browser.urlTemplate
+      ? browser.urlTemplate.replace(/\{\{URL\}\}/u, urlString)
+      : urlString
+
+    const openArguments: string[] = [
+      processedUrlTemplate,
+      '-b',
+      browserId,
+      isAlt ? '--background' : '',
+    ].filter(Boolean)
+
+    execa('open', openArguments)
+
+    bWindow?.hide()
+    app.hide()
+  },
+)
+
+ipcMain.on(COPY_TO_CLIPBOARD, (_: Event, url: string) => {
+  if (url) {
+    copyToClipboard(url)
+    bWindow?.hide()
+    app.hide()
   }
+})
+
+ipcMain.on(ESCAPE_PRESSED, () => {
+  bWindow?.hide()
+  app.hide()
+})
+
+ipcMain.on(FAVOURITE_SELECTED, (_, favBrowserId) => {
+  store.set('fav', favBrowserId)
+  // TODO should this be here? Maybe deal with this the same as hotkeys
+  // by only sending down value on start and letting renderer keep track of its state?
+  bWindow?.webContents.send(FAVOURITE_CHANGED, favBrowserId)
+})
+
+ipcMain.on(HOTKEYS_UPDATED, (_, hotkeys: Hotkeys) => {
+  store.set('hotkeys', hotkeys)
+})
+
+ipcMain.on(SET_AS_DEFAULT_BROWSER, () => {
+  app.setAsDefaultProtocolClient('http')
+})
+
+ipcMain.on(RELOAD, () => {
+  bWindow?.reload()
+})
+
+ipcMain.on(QUIT, () => {
+  app.quit()
+})
+
+ipcMain.on(LOGGER, (_, string: string) => {
+  logger('Renderer', string)
 })

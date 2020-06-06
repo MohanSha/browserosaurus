@@ -3,12 +3,6 @@ import './index.css'
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 
-import App from './App'
-import ErrorBoundary from './ErrorBoundary'
+import TheApp from './components/the-app'
 
-ReactDOM.render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>,
-  document.querySelector('#picker-root'),
-)
+ReactDOM.render(<TheApp />, document.querySelector('#app'))

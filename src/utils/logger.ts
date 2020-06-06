@@ -1,7 +1,11 @@
-import { ipcRenderer } from 'electron'
+import electronIsDev from 'electron-is-dev'
 
-import { LOG } from '../config/events'
+const blue = (string: string) => `\u001B[34m${string}\u001B[0m`
+const dim = (string: string) => `\u001B[2m${string}\u001B[0m`
 
-const logger = (str: string) => ipcRenderer.send(LOG, str)
-
-export default logger
+export function logger(domain: string, message: string): void {
+  if (electronIsDev) {
+    // eslint-disable-next-line no-console
+    console.log(`${blue(domain)} ${dim('›')}`, message)
+  }
+}
